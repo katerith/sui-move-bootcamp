@@ -70,20 +70,24 @@ use sui::test_utils::{destroy, assert_eq};
 //      2. Assert that the created Hero's name matches the provided name.
 //      3. Properly clean up the created Hero object using `destroy`.
 //--------------------------------------------------------------
-// #[test]
-// fun test_hero_creation() {
-//     let mut test = ts::begin(@USER);
-//     init(test.ctx());
-//     test.next_tx(@USER);
+#[test]
+fun test_hero_creation() {
+    let mut test = ts::begin(@USER);
+    init(test.ctx());
+    test.next_tx(@USER);
 
-//     //Get hero Registry
+    //Get hero Registry
+    
+    let mut registry = take_shared<HeroRegistry>(&test);
+    let name = b"Luffy".to_string();
+    let hero = mint_hero(name, &mut registry, test.ctx());
 
-//     let hero = mint_hero(b"Flash".to_string(), test.ctx());
-//     assert_eq(hero.name, b"Flash".to_string());
+    assert!(name == hero.name, 666);
 
-//     destroy(hero);
-//     test.end();
-// }
+    return_shared(registry);
+    destroy(hero);
+    test.end();
+}
 
 //--------------------------------------------------------------
 //  Test 2: Event Emission
