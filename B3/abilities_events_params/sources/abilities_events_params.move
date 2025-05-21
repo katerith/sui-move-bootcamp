@@ -10,6 +10,7 @@ module abilities_events_params::abilities_events_params {
     public struct Hero has key {
         id: UID, // required
         name: String,
+        medals: vector<Medal>,
     }
 
     public struct HeroMinted has copy, drop {
@@ -20,6 +21,11 @@ module abilities_events_params::abilities_events_params {
     public struct HeroRegistry has key, store {
         id: UID,
         heroes: vector<ID>,
+    }
+
+    public struct Medal has key, store {
+        id: UID,
+        name: String,
     }
 
     // Module Initializer
@@ -35,6 +41,7 @@ module abilities_events_params::abilities_events_params {
         let freshHero = Hero {
             id: object::new(ctx), // creates a new UID
             name,
+            medals: vector[],
         };
         registry.heroes.push_back(object::id(&freshHero));
 
@@ -52,6 +59,14 @@ module abilities_events_params::abilities_events_params {
         transfer::transfer(hero, ctx.sender());
     }
 
+    public fun award_medal_of_honor(hero: &mut Hero, ctx: &mut TxContext) {
+        let medal = Medal {
+            id: object::new(ctx),
+            name: b"Medal of Honor".to_string(),
+        };
+        hero.medals.push_back(medal);
+    }
+
     /////// Tests ///////
 
 #[test_only]
@@ -59,7 +74,7 @@ use sui::test_scenario as ts;
 #[test_only]
 use sui::test_scenario::{take_shared, return_shared};
 #[test_only]
-use sui::test_utils::{destroy, assert_eq};
+use sui::test_utils::{destroy};
 
 //--------------------------------------------------------------
 //  Test 1: Hero Creation
@@ -133,6 +148,25 @@ fun test_event_thrown() {
 //      7. Consider creating a shared `MedalStorage` object to manage the available medals.
 //--------------------------------------------------------------
 #[test]
-fun test_medal_award() { assert_eq(1, 1); }
+fun test_medal_award() { 
+    let mut test = ts::begin(@USER);
+    init(test.ctx());
+    test.next_tx(@USER);
+
+    let mut registry = take_shared<HeroRegistry>(&test);
+    let name = b"Luffy".to_string();
+    let mut hero = mint_hero(name, &mut registry, test.ctx());
+
+    // Award a medal to the hero
+    award_medal_of_honor(&mut hero, test.ctx());
+
+    // Assert that the hero's medals vector contains the awarded medal
+    assert!(hero.medals.length() == 1, 666);
+    assert!(hero.medals[0].name == b"Medal of Honor".to_string(), 666);
+
+    return_shared(registry);
+    destroy(hero);
+    test.end();
+ }
 
 }
