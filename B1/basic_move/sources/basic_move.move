@@ -1,27 +1,140 @@
-module basic_move::basic_move;
+module basic_move::basic_move {
 
-use sui::test_scenario;
-use sui::test_utils::{destroy};
+    //Imports
+    //  package name:: module name:: {function name}
+    use std::string::{ utf8, String };
+    use sui::test_scenario::{ begin };
+    // use sui::test_utils::{destroy};
 
-public struct Hero has key, store {
-    id: UID
+    //Exeption Codes
+    const EAlreadyCarriesWeapon: u64 = 1;
+
+    public struct Hero has key, store {
+        id: UID,
+        name: String,
+        stamina: u64,
+        weapon: Option<Weapon>, //gives null option
+    }
+
+    public struct Weapon has key, store {
+        id: UID,
+        name: String,
+        power: u64,
+    }
+
+    //txcontext
+    public fun mint_hero(name_param: String, stamina: u64, ctx: &mut TxContext): Hero {
+        let aHero = Hero {
+            id: object::new(ctx),
+            name: name_param,
+            stamina,
+            weapon: option::none()
+        };
+        aHero
+    }
+
+    public fun create_weapon(
+        weapon_name: String,
+        destruction_power: u64,
+        ctx: &mut TxContext
+    ) : Weapon {
+        Weapon {
+            id: object::new(ctx),
+            name: weapon_name,
+            power: destruction_power,
+        }
+    }
+
+    public fun equip_hero(hero: &mut Hero, weapon: Weapon) {
+        assert!(hero.weapon.is_none(), EAlreadyCarriesWeapon);
+        hero.weapon.fill(weapon);
+    }
+
+    #[test]
+    fun test_mint() {
+        let mut test = begin(@0xCAFE);
+        let name = utf8(b"SuperMan");
+        let hero = mint_hero(name, 89, test.ctx());
+        // let obj_id = hero.id.to_inner();
+        // assert!(object::id(&hero) == obj_id, 0);
+        
+        assert!(name == hero.name, 666);
+
+        destroy_for_testing(hero);
+        test.end();
+    }
+
+    #[test]
+    fun test_equip() {
+        let mut test = begin(@0xCAFE);
+        let mut hero = mint_hero(utf8(b"BatMan"), 66, test.ctx());
+
+        assert!(utf8(b"BatMan") == hero.name, 666);
+        assert!(hero.weapon.is_none(), 667);
+
+        let aWeapon = create_weapon(utf8(b"BatMobile"), 99, test.ctx());
+        hero.equip_hero(aWeapon);
+
+        assert!(hero.weapon.is_some(), 9998);
+        let w = hero.weapon.borrow(); 
+        assert!(w.name == b"BatMobile".to_string(), 9999);
+        assert!(hero.weapon.is_some(), 9998);
+
+        destroy_for_testing(hero);
+        test.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EAlreadyCarriesWeapon)]
+    fun test_equip_with_existing_error() {
+        let mut test = begin(@0xCAFE);
+        let mut hero = mint_hero(utf8(b"BatMan"), 66, test.ctx());
+
+        assert!(utf8(b"BatMan") == hero.name, 666);
+        assert!(hero.weapon.is_none(), 667);
+
+        let aWeapon = create_weapon(
+            utf8(b"BatMobile"), 
+            99, 
+            test.ctx()
+        );
+        hero.equip_hero(aWeapon);
+
+        let bWeapon = create_weapon(
+            utf8(b"otherBatMobile"), 
+            99, 
+            test.ctx()
+        );
+        hero.equip_hero(bWeapon);
+
+        assert!(hero.weapon.is_some(), 9998);
+        let w = hero.weapon.borrow(); 
+        assert!(w.name == b"BatMobile".to_string(), 9999);
+        assert!(hero.weapon.is_some(), 9998);
+
+        destroy_for_testing(hero);
+        test.end();
+    }
+
+    #[test_only]
+    fun destroy_for_testing(hero: Hero) {
+        let Hero {
+            id,
+            name: _,
+            stamina: _,
+            weapon: _w,
+        } = hero;
+        object::delete(id);
+
+        if(_w.is_some()) {
+            let Weapon {
+                id: wid,
+                name: _,
+                power: _,
+            } = _w.destroy_some();
+            object::delete(wid);
+        } else {
+            _w.destroy_none();
+        }
+    }
 }
-
-
-public fun mint_hero(ctx: &mut TxContext): Hero {
-    let aHero = Hero {
-        id: object::new(ctx)
-    };
-    aHero
-}
-
-#[test]
-fun test_mint() {
-    let mut test = test_scenario::begin(@0xCAFE);
-    let hero = mint_hero(test.ctx());
-    let obj_id = hero.id.to_inner();
-    assert!(object::id(&hero) == obj_id, 0);
-    destroy(hero);
-    test.end();
-}
-
