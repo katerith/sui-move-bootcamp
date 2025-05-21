@@ -4,30 +4,47 @@ module publisher::hero {
 
     const EWrongPublisher: u64 = 1;
 
-    public struct Hero has key {
+    public struct Hero has key, store {
         id: UID,
         name: String,
     }
 
-    fun init(ctx: &mut TxContext) {
+    public struct HERO has drop {} //one time witness, same name as module in uppercase
+
+    fun init(otw: HERO, ctx: &mut TxContext) {
         // create Publisher and transfer it to the publisher wallet
+        // let publisher = package::claim(otw, ctx);
+        // transfer::public_transfer(publisher, recipient)
+        package::claim_and_keep(otw, ctx);
     }
 
     public fun create_hero(publisher: &Publisher, name: String, ctx: &mut TxContext): Hero {
         // verify that publisher is from the same module
+       assert!(publisher.from_module<HERO>(), EWrongPublisher);
 
         // create Hero resource
+        let hero = Hero {
+            id: object::new(ctx),
+            name,
+        };
+
+        hero
     }
 
     public fun transfer_hero(publisher: &Publisher, hero: Hero, to: address) {
         // verify that publisher is from the same module
-
+        assert!(publisher.from_module<HERO>(), EWrongPublisher);
         // transfer the Hero resource to the user
+        // transfer::public_transfer(hero, to);
+        transfer::transfer(hero, to);
     }
 
     // ===== TEST ONLY =====
 
     #[test_only]
+    // use sui::package;
+    use sui::transfer::public_transfer;
+    use sui::transfer;
     use sui::{test_scenario as ts, test_utils::{assert_eq, destroy}};
 
     #[test_only]
@@ -75,7 +92,36 @@ module publisher::hero {
 
     #[test]
     fun test_admin_can_transfer_hero() {
-        // TODO: Implement test
+        let mut ts = ts::begin(ADMIN);
+
+        init(HERO {}, ts.ctx());
+        ts.next_tx(ADMIN);
+        assert_eq(ts::has_most_recent_for_address<Publisher>(USER), false);
+
+        let publisher = ts.take_from_sender<Publisher>();
+        let hero = create_hero(&publisher, b"Hero 1".to_string(), ts.ctx());
+        transfer_hero(&publisher, hero, USER);
+
+        ts.next_tx(ADMIN);
+
+        assert_eq(ts::has_most_recent_for_address<Hero>(USER), true);
+        
+        ts.return_to_sender(publisher);
+        ts.end();
+    }
+
+    #[test_only]
+    public struct HERO_TEST has drop {}
+
+    #[test, expected_failure(abort_code = hero::EWrongPublisher)]
+    fun test_publisher_cannot_mint_hero_with_wrong_publisher_object() {
+        let test_otw = create_one_time_witness<HERO_TEST>();
+        let ctx = tx_context::dummy();
+        let publisher = package::test_claim(test_otw, &mut ctx);
+        let hero = create_hero(&publisher, b"Hero 1".to_string(), ctx);
+
+        destroy(hero);
+        destroy(publisher);
     }
 }
 
