@@ -1,60 +1,75 @@
-module display::hero;
+module display::hero {
+    use std::string::String;
+    use sui::display;
+    use sui::package;
 
-use std::string::String;
-use sui::display;
-use sui::package;
+    public struct HERO has drop {}
 
-public struct HERO has drop {}
-
-public struct Hero has key, store {
-    id: UID,
-    name: String,
-    blob_id: String,
-}
-
-fun init(otw: HERO, ctx: &mut TxContext) {
-    let publisher = package::claim(otw, ctx);
-    
-    // setup the display
-}
-
-public fun mint(name: String, blob_id: String, ctx: &mut TxContext): Hero {
-    Hero {
-        id: object::new(ctx),
-        name,
-        blob_id,
+    public struct Hero has key, store {
+        id: UID,
+        name: String,
+        blob_id: String,
     }
-}
 
-#[test_only]
-use sui::{test_scenario as ts, test_utils::assert_eq};
-#[test_only]
-use sui::display::Display;
-#[test_only]
-const ADMIN: address = @0xAA;
+    fun init(otw: HERO, ctx: &mut TxContext) {
+        let publisher = package::claim(otw, ctx);
 
-#[test]
-fun test_publisher_receives_the_display_object() {
-    let mut ts = ts::begin(ADMIN);
+        let keys = vector[b"name".to_string(), b"image_url".to_string(), b"description".to_string()];
 
-    init(HERO {}, ts.ctx());
+        let values = vector[
+            b"{name}".to_string(),
+            b"https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blob_id}".to_string(),
+            b"{name} - A true Hero of the Sui ecosystem!".to_string(),
+        ];
 
-    ts.next_tx(ADMIN);
+        // setup the display
+        let mut display = display::new_with_fields<Hero>(&publisher, keys, values, ctx);
 
-    let display = ts.take_from_sender<Display<Hero>>();
-    let fields = display.fields();
-    assert_eq(display.version(), 1);
-    assert_eq(*fields.get(&b"name".to_string()), b"{name}".to_string());
-    assert_eq(
-        *fields.get(&b"image_url".to_string()),
-        b"https://aggregator.walrus-testnet.walrus.space/v1/blobs/{image_url}".to_string(),
-    );
-    assert_eq(
-        *fields.get(&b"description".to_string()),
-        b"{name} - A true Hero of the Sui ecosystem!".to_string(),
-    );
+        display.update_version();
 
-    ts.return_to_sender(display);
+        transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(display, ctx.sender());
+    }
 
-    ts.end();
+    public fun mint(name: String, blob_id: String, ctx: &mut TxContext): Hero {
+        Hero {
+            id: object::new(ctx),
+            name,
+            blob_id,
+        }
+    }
+
+    #[test_only]
+    use sui::{test_scenario as ts, test_utils::assert_eq};
+    #[test_only]
+    use sui::display::Display;
+    #[test_only]
+    const ADMIN: address = @0xAA;
+
+    #[test]
+    fun test_publisher_receives_the_display_object() {
+        let mut ts = ts::begin(ADMIN);
+
+        init(HERO {}, ts.ctx());
+
+        ts.next_tx(ADMIN);
+
+        let display = ts.take_from_sender<Display<Hero>>();
+        let fields = display.fields();
+        assert_eq(display.version(), 1);
+        assert_eq(*fields.get(&b"name".to_string()), b"{name}".to_string());
+        assert_eq(
+            *fields.get(&b"image_url".to_string()),
+            b"https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blob_id}".to_string(),
+        );
+        assert_eq(
+            *fields.get(&b"description".to_string()),
+            b"{name} - A true Hero of the Sui ecosystem!".to_string(),
+        );
+
+        ts.return_to_sender(display);
+
+        ts.end();
+    }
+
 }
