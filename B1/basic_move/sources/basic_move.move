@@ -55,8 +55,8 @@ module basic_move::basic_move {
         let mut test = begin(@0xCAFE);
         let name = utf8(b"SuperMan");
         let hero = mint_hero(name, 89, test.ctx());
-        // let obj_id = hero.id.to_inner();
-        // assert!(object::id(&hero) == obj_id, 0);
+        let obj_id = hero.id.to_inner();
+        assert!(object::id(&hero) == obj_id, 0);
         
         assert!(name == hero.name, 666);
 
