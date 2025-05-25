@@ -21,10 +21,13 @@ module capability::hero {
     }
 
     public fun create_hero(_: &AdminCap, name: String, ctx: &mut TxContext): Hero {
-        Hero {
+        // create a new Hero resource
+        let hero = Hero {
             id: object::new(ctx),
             name,
-        }
+        };
+
+        hero
     }
 
     public fun transfer_hero(_: &AdminCap, hero: Hero, to: address) {
