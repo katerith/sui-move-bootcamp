@@ -1,72 +1,72 @@
-module hero::hero;
+module hero::hero {
+    use std::string::String;
+    use sui::dynamic_field as df;
+    use sui::dynamic_object_field as dof;
+    use sui::package;
 
-use std::string::String;
+    use hero::blacksmith::{Sword};
 
-use sui::dynamic_field as df;
-use sui::dynamic_object_field as dof;
-use sui::package;
+    const EAlreadyEquipedSword: u64 = 1;
 
-use hero::blacksmith::{Sword};
+    public struct HERO() has drop;
 
-const EAlreadyEquipedSword: u64 = 1;
-
-public struct HERO() has drop;
-
-/// Hero NFT
-public struct Hero has key, store {
-    id: UID,
-    health: u64,
-    stamina: u64,
-}
-
-fun init(otw: HERO, ctx: &mut TxContext) {
-    package::claim_and_keep(otw, ctx);
-}
-
-/// Anyone can mint a hero.
-/// Hero starts with 100 heath and 10 stamina.
-public fun mint_hero(ctx: &mut TxContext): Hero {
-    Hero {
-        id: object::new(ctx),
-        health: 100,
-        stamina: 10
+    /// Hero NFT
+    public struct Hero has key, store {
+        id: UID,
+        health: u64,
+        stamina: u64,
     }
-}
 
-/// Hero can equip a single sword.
-/// Equiping a sword increases the `Hero`'s power by its attack.
-public fun equip_sword(self: &mut Hero, sword: Sword) {
-    if (df::exists_(&self.id, b"sword".to_string())) {
-        abort(EAlreadyEquipedSword)
-    };
-    self.add_dof(b"sword".to_string(), sword)
-}
+    fun init(otw: HERO, ctx: &mut TxContext) {
+        package::claim_and_keep(otw, ctx);
+    }
 
-public fun health(self: &Hero): u64 {
-    self.health
-}
+    /// Anyone can mint a hero.
+    /// Hero starts with 100 heath and 10 stamina.
+    public fun mint_hero(ctx: &mut TxContext): Hero {
+        Hero {
+            id: object::new(ctx),
+            health: 100,
+            stamina: 10
+        }
+    }
 
-public fun stamina(self: &Hero): u64 {
-    self.stamina
-}
+    /// Hero can equip a single sword.
+    /// Equiping a sword increases the `Hero`'s power by its attack.
+    public fun equip_sword(self: &mut Hero, sword: Sword) {
+        if (df::exists_(&self.id, b"sword".to_string())) {
+            abort(EAlreadyEquipedSword)
+        };
+        self.add_dof(b"sword".to_string(), sword)
+    }
 
-/// Returns the sword the hero has equipped.
-/// Aborts if it does not exists
-public fun sword(self: &Hero): &Sword {
-    dof::borrow(&self.id, b"sword")
-}
+    public fun health(self: &Hero): u64 {
+        self.health
+    }
 
-/// Generic add dynamic object field to the hero.
-fun add_dof<T: key + store>(self: &mut Hero, name: String, value: T) {
-    dof::add(&mut self.id, name, value)
-}
+    public fun stamina(self: &Hero): u64 {
+        self.stamina
+    }
 
-#[test_only]
-public fun init_for_testing(ctx: &mut TxContext) {
-    init(HERO(), ctx);
-}
+    /// Returns the sword the hero has equipped.
+    /// Aborts if it does not exists
+    public fun sword(self: &Hero): &Sword {
+        dof::borrow(&self.id, b"sword")
+    }
 
-#[test_only]
-public fun uid_mut_for_testing(self: &mut Hero): &mut UID {
-    &mut self.id
+    /// Generic add dynamic object field to the hero.
+    fun add_dof<T: key + store>(self: &mut Hero, name: String, value: T) {
+        dof::add(&mut self.id, name, value)
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(HERO(), ctx);
+    }
+
+    #[test_only]
+    public fun uid_mut_for_testing(self: &mut Hero): &mut UID {
+        &mut self.id
+    }
+
 }
