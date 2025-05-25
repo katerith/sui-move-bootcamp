@@ -11,9 +11,14 @@ describe("Mint a Hero NFT and equip a Sword", () => {
 
   beforeAll(async () => {
     txResponse = await mintHeroWithSword();
-    await suiClient.waitForTransaction({
+    // console.log("Transaction response:", txResponse);
+    const tx = await suiClient.waitForTransaction({
       digest: txResponse.digest,
       timeout: 5_000,
+      // pollInterval: 1_000,
+      // options: {
+      //   showEffects: true,
+      // }
     });
     console.log("Executed transaction with txDigest:", txResponse.digest);
   });
@@ -24,6 +29,7 @@ describe("Mint a Hero NFT and equip a Sword", () => {
   });
 
   test("Created Hero and Sword", async () => {
+    // console.log('txResponse:', txResponse);
     expect(txResponse.objectChanges).toBeDefined();
     const { heroesIds, swordsIds } = parseCreatedObjectsIds({
       objectChanges: txResponse.objectChanges!,
